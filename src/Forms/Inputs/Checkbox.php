@@ -3,16 +3,16 @@
 namespace FreezyBee\Magicrator\Forms\Inputs;
 
 /**
- * Class CheckBox
+ * Class Checkbox
  * @package FreezyBee\Magicrator\Forms\Inputs
  */
-class CheckBox extends BaseInput
+class Checkbox extends BaseInput
 {
     /**
      * @return string
      */
     protected function getInputName()
     {
-        return 'CheckBox';
+        return 'Checkbox';
     }
 }

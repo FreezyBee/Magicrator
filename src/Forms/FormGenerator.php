@@ -37,6 +37,9 @@ class FormGenerator extends Object implements IGenerator
     /**  */
     const MULTI_SELECT = 5;
 
+    /** @var bool */
+    public static $withUserDependency = false;
+
     /** @var EntityManager */
     private $entityManager;
 
@@ -112,16 +115,19 @@ class FormGenerator extends Object implements IGenerator
         $this->phpNamespace->addUse('FreezyBee\Forms\FreezyForm');
         $this->phpNamespace->addUse('FreezyBee\Forms\Rendering\Bs3FormRenderer');
         $this->phpNamespace->addUse($entityNamespace);
-
+        
         foreach ($this->dependencies as $type => $property) {
             if ($type) {
                 $this->phpNamespace->addUse($type);
             }
         }
 
+        if (self::$withUserDependency) {
+            $this->phpNamespace->addUse('App\Model\Utils\LoggedUserProvider');
+        }
+
         $entityInpector = new EntityInspector($this->entityManager);
         $entityProperties = $entityInpector->inspectForForm($this->entityNamespace);
-
 
         $this->generateProperties($class);
         $this->generateConstructor($class);
@@ -138,6 +144,13 @@ class FormGenerator extends Object implements IGenerator
         $class->addProperty($this->facadeName)
             ->setVisibility('private')
             ->addDocument('@var ' . self::getClassFromType($this->facadeNamespace));
+
+        if (self::$withUserDependency) {
+            $class->addProperty('userProvider')
+                ->setVisibility('protected')
+                ->addDocument('@var LoggedUserProvider');
+        }
+
     }
 
     /**
@@ -148,6 +161,14 @@ class FormGenerator extends Object implements IGenerator
         $method = $class->addMethod('__construct');
 
         $method->addBody('parent::__construct($formService);' . "\n");
+
+        if (self::$withUserDependency) {
+            $method->addParameter('userProvider')
+                ->setTypeHint('App\Model\Utils\LoggedUserProvider');
+
+            $method->addDocument('@param LoggedUserProvider $userProvider');
+            $method->addBody('$this->userProvider = $userProvider;');
+        }
         
         foreach ($this->dependencies + ['id'] as $type => $property) {
             $method->addParameter($property)
@@ -160,11 +181,17 @@ class FormGenerator extends Object implements IGenerator
             }
         }
 
-        $method->addBody(
-            "\nif (\$id) {\n    \$this->entity = \$" . $this->facadeName . "->find(\$id);\n}\n\n" .
-            "if (\$this->entity == null) {\n    \$this->entity = new " . self::getClassFromType($this->entityNamespace).
-            ";\n}"
-        );
+        $initEntity = "\nif (\$id) {\n    \$this->entity = \$" . $this->facadeName . "->find(\$id);\n}\n\n" .
+            "if (\$this->entity == null) {\n    \$this->entity = new " .
+            self::getClassFromType($this->entityNamespace);
+        
+        if (self::$withUserDependency) {
+            $initEntity .= '($this->userProvider->getUser())';
+        }
+
+        $initEntity .= ";\n}";
+        
+        $method->addBody($initEntity);
     }
 
     /**

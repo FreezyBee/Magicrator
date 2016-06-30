@@ -62,6 +62,11 @@ class MagicratorCommand extends Command
 
         $entityManager = $this->getHelper('container')->getByType(EntityManager::class);
 
+        $withUserDependency = isset($neon['config']['withUserDependency']) ?
+            $neon['config']['withUserDependency'] : false;
+        
+        Forms\FormGenerator::$withUserDependency = $withUserDependency;
+        
         if (isset($neon['grids'])) {
             $this->output->writeln('<comment>Grids</comment>');
 

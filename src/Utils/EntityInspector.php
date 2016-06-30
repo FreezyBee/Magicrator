@@ -22,9 +22,7 @@ class EntityInspector extends Object
     /** All inspection type */
     const TYPE_ALL = Annotations\All::class;
 
-    /**
-     * @var string
-     */
+    /** @var string */
     private static $selType;
 
     /** @var EntityManager */
@@ -60,6 +58,12 @@ class EntityInspector extends Object
             $magicratorAnnotation = $this->getMagicratorAnnotations($reflectionProperty);
             if ($magicratorAnnotation == null) {
                 continue;
+            }
+
+            // is dateTime?
+            $var = $this->annotationReader->getPropertyAnnotation($reflectionProperty, 'Doctrine\ORM\Mapping\Column');
+            if (strpos($var->type ?? '', 'date') !== false && $magicratorAnnotation->type == 'text') {
+                $magicratorAnnotation->type = 'dateTime';
             }
 
             $asserts = [];
@@ -116,14 +120,9 @@ class EntityInspector extends Object
                 }
             }
 
-            // TODO fix cropper
-            if ($annotation->type == 'cropper') {
-                $propertyName .= 'X';
-            }
-
             $properties[$propertyName] = new EntityProperty($propertyName, $annotation, []);
         }
-        
+
         usort($properties, function (EntityProperty $a, EntityProperty $b) {
             return $a->annotation->order > $b->annotation->order;
         });
@@ -150,11 +149,11 @@ class EntityInspector extends Object
             }
 
             if ($annotExact != null) {
-                $annotAll->label = $annotExact->label;
-                $annotAll->type = $annotExact->type;
-                $annotAll->assocTitle = $annotExact->assocTitle;
-                $annotAll->assocField = $annotExact->assocField;
-                $annotAll->order = $annotExact->order;
+                $annotAll->label = $annotExact->label ?: $annotAll->label;
+                $annotAll->type = $annotExact->type !== 'text' ? $annotExact->type : $annotAll->type;
+                $annotAll->assocTitle = $annotExact->assocTitle ?: $annotAll->assocTitle;
+                $annotAll->assocField = $annotExact->assocField ?: $annotAll->assocField;
+                $annotAll->order = $annotExact->order !== 66 ? $annotExact->order : $annotAll->order;
             }
 
             return $annotAll;
